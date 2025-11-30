@@ -24,6 +24,8 @@ class AutoSploitTerminal(object):
     """
 
     internal_terminal_commands = [
+        # numeric menu options
+        "1", "2", "3", "4", "5", "6", "99",
         # viewing gathered hosts
         "view", "show",
         # displaying memory
@@ -517,15 +519,16 @@ class AutoSploitTerminal(object):
         menu = """
 Available Options:
 ==================
-1. Usage And Legal      - View usage instructions and legal information
-2. Gather Hosts         - Search for hosts using Shodan/ZoomEye/Censys
-3. Custom Hosts         - Load a custom hosts file
-4. Add Single Host      - Add individual IP addresses
-5. View Gathered Hosts  - Display collected target IPs
-6. Exploit Gathered Hosts - Launch exploits against gathered hosts
-99. Quit               - Exit the program
+ 1. Usage And Legal       - View usage instructions and legal information
+ 2. Gather Hosts          - Search for hosts using Shodan/ZoomEye/Censys
+ 3. Custom Hosts          - Load a custom hosts file
+ 4. Add Single Host       - Add individual IP addresses
+ 5. View Gathered Hosts   - Display collected target IPs
+ 6. Exploit Gathered Hosts - Launch exploits against gathered hosts
+99. Quit                  - Exit the program
 
-Commands: search, view, exploit, custom, single, nmap, help, exit
+Enter a number (1-6, 99) or use text commands:
+search, view, exploit, custom, single, nmap, help, exit
 """
         print(menu)
 
@@ -587,7 +590,58 @@ Commands: search, view, exploit, custom, single, nmap, help, exit
                                 choice_data_list = None
                         except:
                             choice_data_list = None
-                        if choice == "?" or choice == "help":
+                        # Numeric menu option handlers
+                        if choice == "1":
+                            # Usage And Legal
+                            self.do_display_usage()
+                        elif choice == "2":
+                            # Gather Hosts - interactive prompt
+                            api_name = lib.output.prompt(
+                                "enter API name (shodan/zoomeye/censys, or comma-separated for multiple)",
+                                lowercase=True
+                            )
+                            query = lib.output.prompt("enter your search query", lowercase=False)
+                            if api_name and query:
+                                self.do_api_search(api_name, [query], tokens)
+                            else:
+                                lib.output.error("API name and query are required")
+                        elif choice == "3":
+                            # Custom Hosts
+                            file_path = lib.output.prompt("enter the full path to your hosts file", lowercase=False)
+                            if file_path:
+                                self.do_load_custom_hosts(file_path)
+                            else:
+                                lib.output.error("file path is required")
+                        elif choice == "4":
+                            # Add Single Host
+                            ip = lib.output.prompt("enter IP address (or comma-separated IPs)", lowercase=False)
+                            if ip:
+                                self.do_add_single_host(ip)
+                            else:
+                                lib.output.error("IP address is required")
+                        elif choice == "5":
+                            # View Gathered Hosts
+                            self.do_view_gathered()
+                        elif choice == "6":
+                            # Exploit Gathered Hosts - interactive prompt
+                            lhost = lib.output.prompt("enter LHOST (your IP address)", lowercase=False)
+                            lport = lib.output.prompt("enter LPORT (listening port)", lowercase=False)
+                            workspace = lib.output.prompt("enter workspace name (default: 'default')", lowercase=False)
+                            if not workspace:
+                                workspace = "default"
+
+                            if lhost and lport:
+                                if lib.settings.validate_ip_addr(lhost, home_ok=True):
+                                    workspace_info = (lhost, lport, workspace, None, False)
+                                    self.do_exploit_targets(workspace_info, shodan_token=self.tokens["shodan"][0])
+                                else:
+                                    lib.output.error("invalid LHOST IP address")
+                            else:
+                                lib.output.error("LHOST and LPORT are required")
+                        elif choice == "99":
+                            # Quit
+                            self.do_quit_terminal(save_history=save_history)
+                        elif choice == "?" or choice == "help":
                             self.do_display_usage()
                         elif any(c in choice for c in ("external",)):
                             self.do_display_external()
