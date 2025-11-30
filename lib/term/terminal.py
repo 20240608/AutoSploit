@@ -246,8 +246,10 @@ class AutoSploitTerminal(object):
             return
         try:
             api_list = requested_api_data.split(",")
+            # Strip whitespace from each API name
+            api_list = [api.strip() for api in api_list]
         except:
-            api_list = [requested_api_data]
+            api_list = [requested_api_data.strip()]
         prompt_for_save = len(open(lib.settings.HOST_FILE).readlines()) != 0
         if prompt_for_save:
             save_mode = lib.output.prompt(
@@ -600,7 +602,11 @@ search, view, exploit, custom, single, nmap, help, exit
                                 "enter API name (shodan/zoomeye/censys, or comma-separated for multiple)",
                                 lowercase=True
                             )
+                            # Strip whitespace from API name
+                            api_name = api_name.strip() if api_name else ""
                             query = lib.output.prompt("enter your search query", lowercase=False)
+                            # Strip whitespace from query
+                            query = query.strip() if query else ""
                             if api_name and query:
                                 self.do_api_search(api_name, [query], tokens)
                             else:
