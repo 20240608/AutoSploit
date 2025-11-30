@@ -512,6 +512,23 @@ class AutoSploitTerminal(object):
         except lib.errors.NmapScannerError as e:
             lib.output.error(str(e).strip())
 
+    def show_main_menu(self):
+        """Display main menu options"""
+        menu = """
+Available Options:
+==================
+1. Usage And Legal      - View usage instructions and legal information
+2. Gather Hosts         - Search for hosts using Shodan/ZoomEye/Censys
+3. Custom Hosts         - Load a custom hosts file
+4. Add Single Host      - Add individual IP addresses
+5. View Gathered Hosts  - Display collected target IPs
+6. Exploit Gathered Hosts - Launch exploits against gathered hosts
+99. Quit               - Exit the program
+
+Commands: search, view, exploit, custom, single, nmap, help, exit
+"""
+        print(menu)
+
     def terminal_main_display(self, tokens, extra_commands=None, save_history=True):
         # idk what the fuck the problem is but this seems to fix it so...
         import lib.output
@@ -523,6 +540,7 @@ class AutoSploitTerminal(object):
             "to get help type `help` to quit type `exit/quit` to get help on "
             "a specific command type `command help`"
         )
+        self.show_main_menu()
 
         if extra_commands is not None:
             for command in extra_commands:
