@@ -274,6 +274,58 @@ def write_to_file(data_to_write, filename, mode=None):
     return filename
 
 
+def validate_api_key(api_name, token, identity=None):
+    """
+    Validate an API key by making a simple test request
+    Returns: (is_valid, error_message)
+    """
+    import requests
+
+    try:
+        if api_name.lower() == "shodan":
+            # Shodan API info endpoint
+            url = "https://api.shodan.io/api-info?key={}".format(token)
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                return (True, None)
+            elif response.status_code == 401:
+                return (False, "Invalid Shodan API key")
+            else:
+                return (False, "Shodan API error: {}".format(response.status_code))
+
+        elif api_name.lower() == "zoomeye":
+            # ZoomEye API info endpoint
+            url = "https://api.zoomeye.org/resources-info"
+            headers = {"API-KEY": token}
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                return (True, None)
+            elif response.status_code == 401 or response.status_code == 403:
+                return (False, "Invalid ZoomEye API key")
+            else:
+                return (False, "ZoomEye API error: {}".format(response.status_code))
+
+        elif api_name.lower() == "censys":
+            # Censys API account endpoint
+            url = "https://search.censys.io/api/v1/account"
+            response = requests.get(url, auth=(identity, token), timeout=10)
+            if response.status_code == 200:
+                return (True, None)
+            elif response.status_code == 401 or response.status_code == 403:
+                return (False, "Invalid Censys API credentials")
+            else:
+                return (False, "Censys API error: {}".format(response.status_code))
+        else:
+            return (False, "Unknown API: {}".format(api_name))
+
+    except requests.exceptions.Timeout:
+        return (False, "Connection timeout - check your internet connection")
+    except requests.exceptions.ConnectionError:
+        return (False, "Connection error - check your internet connection")
+    except Exception as e:
+        return (False, "Error validating API key: {}".format(str(e)))
+
+
 def load_api_keys(unattended=False, path="{}/etc/tokens".format(CUR_DIR)):
 
     """
@@ -289,19 +341,53 @@ def load_api_keys(unattended=False, path="{}/etc/tokens".format(CUR_DIR)):
     for key in api_order:
         if not os.path.isfile(API_KEYS[key][0]):
             access_token = lib.output.prompt("enter your {} API token".format(key.title()), lowercase=False)
+            access_token = access_token.strip() if access_token else ""
+
             if key.lower() == "censys":
                 identity = lib.output.prompt("enter your {} ID".format(key.title()), lowercase=False)
+                identity = identity.strip() if identity else ""
+
+                # Validate Censys credentials
+                lib.output.misc_info("validating Censys API credentials...")
+                is_valid, error = validate_api_key("censys", access_token, identity)
+                if is_valid:
+                    lib.output.info("Censys API credentials validated successfully!")
+                else:
+                    lib.output.warning("Censys API validation failed: {}".format(error))
+                    lib.output.warning("Credentials saved anyway - you can reset them later with 'tokens reset'")
+
                 with open(API_KEYS[key][1], "a+") as log:
                     log.write(identity)
+            else:
+                # Validate Shodan or ZoomEye key
+                lib.output.misc_info("validating {} API key...".format(key.title()))
+                is_valid, error = validate_api_key(key, access_token)
+                if is_valid:
+                    lib.output.info("{} API key validated successfully!".format(key.title()))
+                else:
+                    lib.output.warning("{} API validation failed: {}".format(key.title(), error))
+                    lib.output.warning("Key saved anyway - you can reset it later with 'tokens reset'")
+
             with open(API_KEYS[key][0], "a+") as log:
                 log.write(access_token.strip())
         else:
             lib.output.info("{} API token loaded from {}".format(key.title(), API_KEYS[key][0]))
-    api_tokens = {
-        "shodan": (open(API_KEYS["shodan"][0]).read().rstrip(),),
-        "zoomeye": (open(API_KEYS["zoomeye"][0]).read().rstrip(),),
-        "censys": (open(API_KEYS["censys"][0]).read().rstrip(), open(API_KEYS["censys"][1]).read().rstrip())
-    }
+
+    # Build return token dictionary
+    api_tokens = {}
+
+    if os.path.isfile(API_KEYS["shodan"][0]):
+        with open(API_KEYS["shodan"][0]) as f:
+            api_tokens["shodan"] = (f.read().rstrip(),)
+
+    if os.path.isfile(API_KEYS["zoomeye"][0]):
+        with open(API_KEYS["zoomeye"][0]) as f:
+            api_tokens["zoomeye"] = (f.read().rstrip(),)
+
+    if os.path.isfile(API_KEYS["censys"][0]) and os.path.isfile(API_KEYS["censys"][1]):
+        with open(API_KEYS["censys"][0]) as f1, open(API_KEYS["censys"][1]) as f2:
+            api_tokens["censys"] = (f1.read().rstrip(), f2.read().rstrip())
+
     return api_tokens
 
 
