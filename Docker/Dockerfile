@@ -1,17 +1,31 @@
-FROM phocean/msf
+FROM python:3.9-slim
 
-COPY "entrypoint.sh" .
-
+# 安装依赖（包括编译工具）
 RUN apt-get update && \
- 	apt-get install -y \
-					git \
-					python-dev \
-					python-pip \
-					apache2
+    apt-get install -y \
+    build-essential \
+    python3-dev \
+    git \
+    postgresql-client \
+    apache2 && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN chmod +x entrypoint.sh && \
-	git clone https://github.com/NullArray/AutoSploit.git && \
-	pip install -r AutoSploit/requirements.txt
-	
+# 复制启动脚本和修复脚本
+COPY entrypoint.sh /entrypoint.sh
+COPY fix_autosploit.py /fix_autosploit.py
+RUN chmod +x /entrypoint.sh /fix_autosploit.py
+
+# 克隆 AutoSploit
+RUN git clone https://github.com/NullArray/AutoSploit.git /AutoSploit
+WORKDIR /AutoSploit
+
+# 运行修复脚本
+RUN python3 /fix_autosploit.py
+
+# 安装 Python 依赖
+RUN pip install -r requirements.txt
+
 EXPOSE 4444
-CMD [ "./entrypoint.sh" ]
+
+CMD ["/entrypoint.sh"]
+
