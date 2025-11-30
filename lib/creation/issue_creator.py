@@ -45,7 +45,7 @@ def checksum(issue_template_path):
             if not any(c in name for c in file_skips):
                 path = os.path.join(root, name)
                 check = hashlib.md5()
-                check.update(open(path).read())
+                check.update(open(path, 'rb').read())
                 check = check.hexdigest()
                 current_checksums.append("{}:{}".format(path.split("/")[-1], check))
     try:

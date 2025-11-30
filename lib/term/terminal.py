@@ -13,8 +13,8 @@ import api_calls.censys
 import lib.exploitation.exploiter
 try:
     raw_input
-except:
-    input = raw_input
+except NameError:
+    raw_input = input
 
 
 class AutoSploitTerminal(object):
