@@ -39,7 +39,7 @@ class ZoomEyeAPIHook(object):
             else:
                 headers = {
                     "API-KEY": self.api_key,
-                    "User-Agent": self.user_agent.get("User-Agent", "")
+                    "User-Agent": self.user_agent.get("User-Agent", "AutoSploit/1.0")
                 }
             params = {"query": self.query, "page": "1", "facet": "ipv4"}
             req = requests.get(
@@ -81,10 +81,9 @@ class ZoomEyeAPIHook(object):
             # Process results
             for item in _json_data["matches"]:
                 if "ip" in item:
-                    if isinstance(item["ip"], list):
-                        if len(item["ip"]) > 0:
-                            for ip in item["ip"]:
-                                discovered_zoomeye_hosts.add(ip)
+                    if isinstance(item["ip"], list) and len(item["ip"]) > 0:
+                        for ip in item["ip"]:
+                            discovered_zoomeye_hosts.add(ip)
                     else:
                         discovered_zoomeye_hosts.add(str(item["ip"]))
 

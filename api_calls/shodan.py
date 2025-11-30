@@ -47,7 +47,7 @@ class ShodanAPIHook(object):
                     )
                 )
 
-            json_data = json.loads(req.content)
+            json_data = req.json()
 
             # Check if API returned an error
             if "error" in json_data:
