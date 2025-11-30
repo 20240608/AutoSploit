@@ -127,18 +127,16 @@ AUTOSPLOIT_PROMPT = "\033[31m{}\033[0m@\033[36mautosploit\033[0m# ".format(getpa
 
 # all the paths to the API tokens
 API_KEYS = {
+    "shodan": ("{}/etc/tokens/shodan.key".format(CUR_DIR),),
     "censys": ("{}/etc/tokens/censys.key".format(CUR_DIR), "{}/etc/tokens/censys.id".format(CUR_DIR)),
-    "shodan": ("{}/etc/tokens/shodan.key".format(CUR_DIR), )
+    "zoomeye": ("{}/etc/tokens/zoomeye.key".format(CUR_DIR),)
 }
 
 # all the URLs that we will use while doing the searching
 API_URLS = {
     "shodan": "https://api.shodan.io/shodan/host/search?key={token}&query={query}",
     "censys": "https://censys.io/api/v1/search/ipv4",
-    "zoomeye": (
-        "https://api.zoomeye.org/user/login",
-        "https://api.zoomeye.org/web/search"
-    )
+    "zoomeye": "https://api.zoomeye.org/host/search"
 }
 
 # has msf been launched?
@@ -286,7 +284,9 @@ def load_api_keys(unattended=False, path="{}/etc/tokens".format(CUR_DIR)):
     if not os.path.exists(path):
         os.mkdir(path)
 
-    for key in API_KEYS.keys():
+    # process APIs in fixed order: shodan -> zoomeye -> censys
+    api_order = ["shodan", "zoomeye", "censys"]
+    for key in api_order:
         if not os.path.isfile(API_KEYS[key][0]):
             access_token = lib.output.prompt("enter your {} API token".format(key.title()), lowercase=False)
             if key.lower() == "censys":
@@ -298,8 +298,9 @@ def load_api_keys(unattended=False, path="{}/etc/tokens".format(CUR_DIR)):
         else:
             lib.output.info("{} API token loaded from {}".format(key.title(), API_KEYS[key][0]))
     api_tokens = {
-        "censys": (open(API_KEYS["censys"][0]).read().rstrip(), open(API_KEYS["censys"][1]).read().rstrip()),
-        "shodan": (open(API_KEYS["shodan"][0]).read().rstrip(), )
+        "shodan": (open(API_KEYS["shodan"][0]).read().rstrip(),),
+        "zoomeye": (open(API_KEYS["zoomeye"][0]).read().rstrip(),),
+        "censys": (open(API_KEYS["censys"][0]).read().rstrip(), open(API_KEYS["censys"][1]).read().rstrip())
     }
     return api_tokens
 

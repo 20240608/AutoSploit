@@ -1,5 +1,4 @@
 import os
-import base64
 import json
 
 import requests
@@ -16,43 +15,16 @@ from lib.settings import (
 class ZoomEyeAPIHook(object):
 
     """
-    API hook for the ZoomEye API, in order to connect you need to provide a phone number
-    so we're going to use some 'lifted' credentials to login for us
+    API hook for the ZoomEye API using API-KEY authentication
     """
 
-    def __init__(self, query=None, proxy=None, agent=None, save_mode=None, **kwargs):
+    def __init__(self, token=None, query=None, proxy=None, agent=None, save_mode=None, **kwargs):
+        self.api_key = token
         self.query = query
         self.host_file = HOST_FILE
         self.proxy = proxy
         self.user_agent = agent
-        self.user_file = "{}/etc/text_files/users.lst".format(os.getcwd())
-        self.pass_file = "{}/etc/text_files/passes.lst".format(os.getcwd())
         self.save_mode = save_mode
-
-    @staticmethod
-    def __decode(filepath):
-        """
-        we all know what this does
-        """
-        with open(filepath) as f:
-            data = f.read()
-            token, n = data.split(":")
-            for _ in range(int(n.strip())):
-                token = base64.b64decode(token)
-        return token.strip()
-
-    def __get_auth(self):
-        """
-        get the authorization for the authentication token, you have to login
-        before you can access the API, this is where the 'lifted' creds come into
-        play.
-        """
-        username = self.__decode(self.user_file)
-        password = self.__decode(self.pass_file)
-        data = {"username": username, "password": password}
-        req = requests.post(API_URLS["zoomeye"][0], json=data)
-        token = json.loads(req.content)
-        return token
 
     def search(self):
         """
@@ -62,17 +34,16 @@ class ZoomEyeAPIHook(object):
         start_animation("searching ZoomEye with given query '{}'".format(self.query))
         discovered_zoomeye_hosts = set()
         try:
-            token = self.__get_auth()
             if self.user_agent is None:
-                headers = {"Authorization": "JWT {}".format(str(token["access_token"]))}
+                headers = {"API-KEY": self.api_key}
             else:
                 headers = {
-                    "Authorization": "JWT {}".format(str(token["access_token"])),
-                    "User-Agent": self.user_agent["User-Agent"]  # oops
+                    "API-KEY": self.api_key,
+                    "User-Agent": self.user_agent["User-Agent"]
                 }
             params = {"query": self.query, "page": "1", "facet": "ipv4"}
             req = requests.get(
-                API_URLS["zoomeye"][1].format(query=self.query),
+                API_URLS["zoomeye"],
                 params=params, headers=headers, proxies=self.proxy
             )
             _json_data = req.json()
