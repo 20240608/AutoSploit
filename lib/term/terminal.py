@@ -188,13 +188,15 @@ class AutoSploitTerminal(object):
         Examples:
         ---------
         Censys ->  reset/tokens censys <token> <userID>
-        Shodan ->  reset.tokens shodan <token>
+        Shodan ->  reset/tokens shodan <token>
+        Zoomeye -> reset/tokens zoomeye <token>
         """
         import sys
 
         if sys.version_info > (3,):
             token = token.encode("utf-8")
-            username = username.encode("utf-8")
+            if username is not None:
+                username = username.encode("utf-8")
 
         if api.lower() == "censys":
             lib.output.info("resetting censys API credentials")
@@ -202,7 +204,12 @@ class AutoSploitTerminal(object):
                 token_.write(token)
             with open(lib.settings.API_KEYS["censys"][1], 'w') as username_:
                 username_.write(username)
+        elif api.lower() == "zoomeye":
+            lib.output.info("resetting zoomeye API credentials")
+            with open(lib.settings.API_KEYS["zoomeye"][0], 'w') as token_:
+                token_.write(token)
         else:
+            lib.output.info("resetting shodan API credentials")
             with open(lib.settings.API_KEYS["shodan"][0], 'w') as token_:
                 token_.write(token)
         lib.output.warning("program must be restarted for the new tokens to initialize")
@@ -288,9 +295,16 @@ class AutoSploitTerminal(object):
                     "starting search on API {} using query: '{}'".format(api, query)
                 )
                 try:
+                    # Select the appropriate token based on the API
+                    if api.lower() == "shodan":
+                        token = tokens["shodan"][0]
+                    elif api.lower() == "zoomeye":
+                        token = tokens["zoomeye"][0]
+                    else:
+                        token = tokens["censys"][0]
                     self.api_call_pointers[api.lower()](
-                        token=tokens["shodan"][0] if api == "shodan" else tokens["censys"][0],
-                        identity=tokens["censys"][1] if api == "censys" else "",
+                        token=token,
+                        identity=tokens["censys"][1] if api.lower() == "censys" else "",
                         query=query,
                         save_mode=save_mode,
                         proxy=proxy,
@@ -671,7 +685,7 @@ class AutoSploitTerminal(object):
                             else:
                                 lib.output.warning("hack to learn, don't learn to hack")
                         elif any(c in choice for c in ("tokens", "reset")):
-                            acceptable_api_names = ("shodan", "censys")
+                            acceptable_api_names = ("shodan", "censys", "zoomeye")
 
                             try:
                                 if "help" in choice_data_list:
