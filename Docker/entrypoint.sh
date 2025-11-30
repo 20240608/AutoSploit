@@ -1,7 +1,11 @@
 #!/bin/bash
 
-/etc/init.d/postgresql start
-/etc/init.d/apache2 start
-cd AutoSploit/
+# Create Docker environment marker
+touch /.dockerenv
 
-python autosploit.py
+# Start Apache
+/etc/init.d/apache2 start
+
+# Run AutoSploit
+cd /AutoSploit
+python3 autosploit.py

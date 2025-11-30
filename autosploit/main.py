@@ -50,48 +50,55 @@ def main():
         info("welcome to autosploit, give us a little bit while we configure")
         misc_info("checking your running platform")
         platform_running = platform.system()
-        misc_info("checking for disabled services")
-        # according to ps aux, postgre and apache2 are the names of the services on Linux systems
-        service_names = ("postgres", "apache2")
-        try:
-            for service in list(service_names):
-                while not check_services(service):
-                    if "darwin" in platform_running.lower():
-                        info(
-                            "seems you're on macOS, skipping service checks "
-                            "(make sure that Apache2 and PostgreSQL are running)"
-                        )
-                        break
-                    choice = prompt(
-                        "it appears that service {} is not enabled, would you like us to enable it for you[y/N]".format(
-                            service.title()
-                        )
-                    )
-                    if choice.lower().startswith("y"):
-                        try:
-                            if "linux" in platform_running.lower():
-                                cmdline("{} linux".format(START_SERVICES_PATH))
-                            else:
-                                close("your platform is not supported by AutoSploit at this time", status=2)
 
-                            # moving this back because it was funky to see it each run
-                            info("services started successfully")
-                        # this tends to show up when trying to start the services
-                        # I'm not entirely sure why, but this fixes it
-                        except psutil.NoSuchProcess:
-                            pass
-                    else:
-                        process_start_command = "`sudo service {} start`"
+        # Check if running in Docker environment
+        is_docker = os.path.exists("/.dockerenv") or os.environ.get("POSTGRES_HOST")
+
+        if is_docker:
+            info("running in Docker environment, skipping local service checks")
+        else:
+            misc_info("checking for disabled services")
+            # according to ps aux, postgre and apache2 are the names of the services on Linux systems
+            service_names = ("postgres", "apache2")
+            try:
+                for service in list(service_names):
+                    while not check_services(service):
                         if "darwin" in platform_running.lower():
-                            process_start_command = "`brew services start {}`"
-                        close(
-                            "service {} is required to be started for autosploit to run successfully (you can do it manually "
-                            "by using the command {}), exiting".format(
-                                service.title(), process_start_command.format(service)
+                            info(
+                                "seems you're on macOS, skipping service checks "
+                                "(make sure that Apache2 and PostgreSQL are running)"
+                            )
+                            break
+                        choice = prompt(
+                            "it appears that service {} is not enabled, would you like us to enable it for you[y/N]".format(
+                                service.title()
                             )
                         )
-        except Exception:
-            pass
+                        if choice.lower().startswith("y"):
+                            try:
+                                if "linux" in platform_running.lower():
+                                    cmdline("{} linux".format(START_SERVICES_PATH))
+                                else:
+                                    close("your platform is not supported by AutoSploit at this time", status=2)
+
+                                # moving this back because it was funky to see it each run
+                                info("services started successfully")
+                            # this tends to show up when trying to start the services
+                            # I'm not entirely sure why, but this fixes it
+                            except psutil.NoSuchProcess:
+                                pass
+                        else:
+                            process_start_command = "`sudo service {} start`"
+                            if "darwin" in platform_running.lower():
+                                process_start_command = "`brew services start {}`"
+                            close(
+                                "service {} is required to be started for autosploit to run successfully (you can do it manually "
+                                "by using the command {}), exiting".format(
+                                    service.title(), process_start_command.format(service)
+                                )
+                            )
+            except Exception:
+                pass
 
         if len(sys.argv) > 1:
             info("attempting to load API keys")
@@ -132,5 +139,5 @@ def main():
         error_traceback = ''.join(traceback.format_tb(sys.exc_info()[2]))
         error_class = str(e.__class__).split(" ")[1].split(".")[1].strip(">").strip("'")
         error_file = save_error_to_file(str(error_traceback), str(e), error_class)
-        print error_traceback
+        print(error_traceback)
         # request_issue_creation(error_file, hide_sensitive(), str(e))
