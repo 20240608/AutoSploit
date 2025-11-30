@@ -16,7 +16,7 @@ COPY fix_autosploit.py /fix_autosploit.py
 RUN chmod +x /entrypoint.sh /fix_autosploit.py
 
 # 克隆 AutoSploit
-RUN git clone https://github.com/NullArray/AutoSploit.git /AutoSploit
+RUN git clone https://github.com/20240608/AutoSploit.git /AutoSploit
 WORKDIR /AutoSploit
 
 # 运行修复脚本
