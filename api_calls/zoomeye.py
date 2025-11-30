@@ -1,4 +1,3 @@
-import os
 import json
 
 import requests
@@ -10,6 +9,7 @@ from lib.settings import (
     HOST_FILE,
     write_to_file
 )
+from lib.output import info, warning
 
 
 class ZoomEyeAPIHook(object):
@@ -39,22 +39,71 @@ class ZoomEyeAPIHook(object):
             else:
                 headers = {
                     "API-KEY": self.api_key,
-                    "User-Agent": self.user_agent["User-Agent"]
+                    "User-Agent": self.user_agent.get("User-Agent", "")
                 }
             params = {"query": self.query, "page": "1", "facet": "ipv4"}
             req = requests.get(
                 API_URLS["zoomeye"],
-                params=params, headers=headers, proxies=self.proxy
+                params=params, headers=headers, proxies=self.proxy,
+                timeout=30
             )
+
+            # Check HTTP status code
+            if req.status_code == 401 or req.status_code == 403:
+                raise AutoSploitAPIConnectionError(
+                    "ZoomEye API authentication failed - check your API key"
+                )
+
+            if req.status_code != 200:
+                raise AutoSploitAPIConnectionError(
+                    "ZoomEye API returned status code {}: {}".format(
+                        req.status_code, req.text[:200]
+                    )
+                )
+
             _json_data = req.json()
+
+            # Check if API returned an error
+            if "error" in _json_data:
+                raise AutoSploitAPIConnectionError(
+                    "ZoomEye API error: {}".format(_json_data["error"])
+                )
+
+            # Check if matches field exists
+            if "matches" not in _json_data:
+                warning("ZoomEye API response does not contain 'matches' field")
+                return False
+
+            if len(_json_data["matches"]) == 0:
+                warning("No results found for query '{}'".format(self.query))
+                return False
+
+            # Process results
             for item in _json_data["matches"]:
-                if len(item["ip"]) > 1:
-                    for ip in item["ip"]:
-                        discovered_zoomeye_hosts.add(ip)
-                else:
-                    discovered_zoomeye_hosts.add(str(item["ip"][0]))
-            write_to_file(discovered_zoomeye_hosts, self.host_file, mode=self.save_mode)
+                if "ip" in item:
+                    if isinstance(item["ip"], list):
+                        if len(item["ip"]) > 0:
+                            for ip in item["ip"]:
+                                discovered_zoomeye_hosts.add(ip)
+                    else:
+                        discovered_zoomeye_hosts.add(str(item["ip"]))
+
+            if len(discovered_zoomeye_hosts) > 0:
+                info("Found {} hosts from ZoomEye".format(len(discovered_zoomeye_hosts)))
+                write_to_file(discovered_zoomeye_hosts, self.host_file, mode=self.save_mode)
+            else:
+                warning("No valid IP addresses found in ZoomEye results")
+
             return True
+
+        except json.JSONDecodeError as e:
+            raise AutoSploitAPIConnectionError("Failed to parse ZoomEye API response: {}".format(str(e)))
+        except requests.exceptions.Timeout:
+            raise AutoSploitAPIConnectionError("ZoomEye API request timed out")
+        except requests.exceptions.ConnectionError:
+            raise AutoSploitAPIConnectionError("Failed to connect to ZoomEye API")
+        except AutoSploitAPIConnectionError:
+            raise
         except Exception as e:
             raise AutoSploitAPIConnectionError(str(e))
 

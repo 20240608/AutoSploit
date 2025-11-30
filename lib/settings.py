@@ -135,7 +135,7 @@ API_KEYS = {
 # all the URLs that we will use while doing the searching
 API_URLS = {
     "shodan": "https://api.shodan.io/shodan/host/search?key={token}&query={query}",
-    "censys": "https://censys.io/api/v1/search/ipv4",
+    "censys": "https://search.censys.io/api/v2/hosts/search",
     "zoomeye": "https://api.zoomeye.org/host/search"
 }
 
